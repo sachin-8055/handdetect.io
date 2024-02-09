@@ -9,14 +9,14 @@
 
     <!-- Load the handtrackjs model. -->
     <script src="https://cdn.jsdelivr.net/npm/handtrackjs/dist/handtrack.min.js"> </script>
-    
+
 
     <!-- <script src="./HandTrack.js"></script> -->
 
     <style>
         #video {
-            width: 100%;
-            height: 30rem !important;
+            width: 90%;
+            /* height: 30rem !important; */
         }
 
         #canvas {
@@ -31,42 +31,21 @@
     <p id="facemsg" style="visibility: hidden;font-size: 20px; font-weight: 800; margin: auto 20%;">* Face Detected</p>
     <p id="handMsg" style="visibility: hidden;font-size: 20px; font-weight: 800; margin: auto 20%;">* Hand Detected</p>
 
-    <video id="video" autoplay></video>
-    <!-- <button id="captureButton">Capture Image</button> -->
+    <video id="video" autoplay playsinline></video>
+    <button id="switch-btn" style="font-size: 14px; font-weight: 800; margin: auto 20%;padding: 5px;">Switch
+        Camera</button>
     <canvas id="canvas"></canvas>
 
 
     <script>
+        const switchBtn = document.getElementById('switch-btn');
+        let currentStream;
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const facemsg = document.getElementById('facemsg');
         const handMsg = document.getElementById('handMsg');
         const modelmsg = document.getElementById('modelmsg');
 
-        console.log("Checking camera access and starting camera....");
-        // Access webcam
-        navigator.mediaDevices.getUserMedia({
-            video: {
-                width: { min: 640, ideal: 1280, max: 1920 },
-                height: { min: 480, ideal: 720, max: 1080 }
-            }
-        })
-            .then(stream => {
-                video.srcObject = stream;
-                video.autoplay = true;
-                // Wait for the video to be loaded
-                video.onloadedmetadata = () => {
-                    // Set up a loop to continuously capture frames from the video stream                    
-                    console.log("Detection started");
-                    setInterval(() => {
-                        detectObjectsInFrame(video);
-                    }, 800); // Adjust the interval as needed
-                };
-
-            })
-            .catch(err => {
-                console.error('Error accessing the webcam:', err);
-            });
 
         let hand_model = null;
         const modelParams = {
@@ -76,7 +55,6 @@
             scoreThreshold: 0.6,    // confidence threshold for predictions.
         }
         const starttime = new Date().getTime();
-
         console.log(" Before Load >> ", new Date());
         modelmsg.innerText = `Model is loading please wait`;
         // Load the model.
@@ -86,6 +64,70 @@
             modelmsg.innerText = `Model is loaded in  ${(endtime - starttime) / 1000} Sec`
             hand_model = model
         });
+
+        console.log("Checking camera access and starting camera....");
+        // Access webcam
+        const constraints = {
+            video: {
+                width: { min: 640, ideal: 1280, max: 1920 },
+                height: { min: 480, ideal: 720, max: 1080 },
+                facingMode: 'environment'
+            }
+        }; // Default to rear camera
+
+        async function initializeCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                currentStream = stream;
+                setInterval(() => {
+                    detectObjectsInFrame(video);
+                }, 800);
+            } catch (err) {
+                console.error('Error accessing the camera:', err);
+            }
+        }
+
+        // Function to switch camera
+        async function switchCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            const constraints = { video: { facingMode: 'user' } }; // Switch to front camera
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                currentStream = stream;
+                setInterval(() => {
+                    detectObjectsInFrame(video);
+                }, 800);
+            } catch (err) {
+                console.error('Error accessing the camera:', err);
+            }
+        }
+
+
+        // currentStream?.then(async stream => {
+
+        //     video.srcObject = stream;
+        //     currentStream = stream;
+
+        //     video.srcObject = stream;
+        //     video.autoplay = true;
+        //     // Wait for the video to be loaded
+        //     video.onloadedmetadata = () => {
+        //         // Set up a loop to continuously capture frames from the video stream                    
+        //         console.log("Detection started");
+        //         setInterval(() => {
+        //             detectObjectsInFrame(video);
+        //         }, 800); // Adjust the interval as needed
+        //     };
+
+        // })
+        //     .catch(err => {
+        //         console.error('Error accessing the webcam:', err);
+        //     });
+
 
 
         function detectObjectsInFrame(video) {
@@ -120,6 +162,12 @@
 
         }
 
+
+        // Initialize camera on page load
+        window.addEventListener('DOMContentLoaded', initializeCamera);
+
+        // Add click event listener to switch button
+        switchBtn.addEventListener('click', switchCamera);
     </script>
 </body>
 
