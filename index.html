@@ -16,7 +16,6 @@
     <style>
         #video {
             width: 90%;
-            /* height: 30rem !important; */
         }
 
         #canvas {
@@ -38,13 +37,34 @@
 
 
     <script>
+
+        const video = document.getElementById('video');
+
         const switchBtn = document.getElementById('switch-btn');
         let currentStream;
-        const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const facemsg = document.getElementById('facemsg');
         const handMsg = document.getElementById('handMsg');
         const modelmsg = document.getElementById('modelmsg');
+
+        function isMobileDevice() {
+            return /Mobi|Android/i.test(navigator.userAgent);
+        }
+
+        if (isMobileDevice()) {
+            console.log('This is a mobile device.');
+
+            video.style.width = '100%';
+            video.style.height = '23rem';
+
+
+        } else {
+            console.log('This is a desktop device.');
+            video.style.width = '50%';
+            video.style.height = '35rem';
+
+        }
+
 
 
         let hand_model = null;
