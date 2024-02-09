@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webcam Image Capture</title>
+
+
+    <!-- Load the handtrackjs model. -->
+    <script src="https://cdn.jsdelivr.net/npm/handtrackjs/dist/handtrack.min.js"> </script>
+    
+
+    <!-- <script src="./HandTrack.js"></script> -->
+
+    <style>
+        #video {
+            width: 100%;
+            height: 30rem !important;
+        }
+
+        #canvas {
+            display: none;
+        }
+    </style>
+
+</head>
+
+<body>
+    <p id="modelmsg"></p>
+    <p id="facemsg" style="visibility: hidden;font-size: 20px; font-weight: 800; margin: 0;">* Face Detected</p>
+    <p id="handMsg" style="visibility: hidden;font-size: 20px; font-weight: 800; margin: 0">* Hand Detected</p>
+
+    <video id="video" autoplay></video>
+    <!-- <button id="captureButton">Capture Image</button> -->
+    <canvas id="canvas"></canvas>
+
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const facemsg = document.getElementById('facemsg');
+        const handMsg = document.getElementById('handMsg');
+        const modelmsg = document.getElementById('modelmsg');
+
+        console.log("Checking camera access and starting camera....");
+        // Access webcam
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                width: { min: 640, ideal: 1280, max: 1920 },
+                height: { min: 480, ideal: 720, max: 1080 }
+            }
+        })
+            .then(stream => {
+                video.srcObject = stream;
+                video.autoplay = true;
+                // Wait for the video to be loaded
+                video.onloadedmetadata = () => {
+                    // Set up a loop to continuously capture frames from the video stream                    
+                    console.log("Detection started");
+                    setInterval(() => {
+                        detectObjectsInFrame(video);
+                    }, 800); // Adjust the interval as needed
+                };
+
+            })
+            .catch(err => {
+                console.error('Error accessing the webcam:', err);
+            });
+
+        let hand_model = null;
+        const modelParams = {
+            flipHorizontal: true,   // flip e.g for video  
+            maxNumBoxes: 20,        // maximum number of boxes to detect
+            iouThreshold: 0.5,      // ioU threshold for non-max suppression
+            scoreThreshold: 0.6,    // confidence threshold for predictions.
+        }
+        const starttime = new Date().getTime();
+
+        console.log(" Before Load >> ", new Date());
+        modelmsg.innerText = `Model is loading please wait`;
+        // Load the model.
+        handTrack.load(modelParams).then(model => {
+            const endtime = new Date().getTime();
+            console.log(" After Load >> ", new Date(), (endtime - starttime) / 1000);
+            modelmsg.innerText = `Model is loaded in  ${(endtime - starttime) / 1000} Sec`
+            hand_model = model
+        });
+
+
+        function detectObjectsInFrame(video) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // detect objects in the frame
+            hand_model?.detect(canvas)?.then(predictions => {
+                const res = predictions?.length > 0 ? predictions : [];
+                // hand_model.renderPredictions(predictions, canvas, context, video);
+
+                console.log('Predictions: ', `Object: ${res[ 0 ]?.label || 'n.a'} | Score: ${res[ 0 ]?.score || '0'}`, res);
+
+                handMsg.style.visibility = "hidden";
+                facemsg.style.visibility = "hidden";
+
+                res?.forEach(data => {
+                    if (data?.label == "face") {
+                        facemsg.style.visibility = "visible";
+                    }
+                    if (data?.label == "open" || data?.label == "close") {
+                        handMsg.style.visibility = "visible";
+                    }
+                })
+            }).catch(e => {
+                console.error('Error detecting objects:', e);
+            });
+
+
+        }
+
+    </script>
+</body>
+
+</html>
